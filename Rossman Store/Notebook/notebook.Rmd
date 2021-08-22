@@ -1,0 +1,1178 @@
+
+---
+title: "first"
+output:
+  pdf_document: default
+  html_notebook: default
+---
+
+## Importing required library
+
+
+```{r}
+options(warn=-1)
+library(ggplot2)
+library(tidyr)
+library(reshape2)
+library(ggplot2)
+library(dplyr)
+library(magrittr)
+library(caret)
+library(rpart)
+library(tree)
+library(vtreat)
+library(randomForest)
+library(ipred)
+library(gbm)
+library(xgboost)
+library(modelr)
+library(lime)  
+library(pdp)
+
+```
+
+    
+    Attaching package: 'reshape2'
+    
+    The following object is masked from 'package:tidyr':
+    
+        smiths
+    
+    
+    Attaching package: 'dplyr'
+    
+    The following objects are masked from 'package:stats':
+    
+        filter, lag
+    
+    The following objects are masked from 'package:base':
+    
+        intersect, setdiff, setequal, union
+    
+    
+    Attaching package: 'magrittr'
+    
+    The following object is masked from 'package:tidyr':
+    
+        extract
+    
+    Loading required package: lattice
+    Loading required package: wrapr
+    
+    Attaching package: 'wrapr'
+    
+    The following object is masked from 'package:dplyr':
+    
+        coalesce
+    
+    The following objects are masked from 'package:tidyr':
+    
+        pack, unpack
+    
+    randomForest 4.6-14
+    Type rfNews() to see new features/changes/bug fixes.
+    
+    Attaching package: 'randomForest'
+    
+    The following object is masked from 'package:dplyr':
+    
+        combine
+    
+    The following object is masked from 'package:ggplot2':
+    
+        margin
+    
+    Loaded gbm 2.1.8
+    
+    Attaching package: 'xgboost'
+    
+    The following object is masked from 'package:dplyr':
+    
+        slice
+    
+    
+    Attaching package: 'modelr'
+    
+    The following object is masked from 'package:wrapr':
+    
+        qae
+    
+    
+    Attaching package: 'lime'
+    
+    The following object is masked from 'package:dplyr':
+    
+        explain
+    
+    
+
+<h1>Loading Data</h1>
+The data was downloaded from https://www.kaggle.com/c/rossmann-store-sales
+
+
+```{r}
+#Load data
+na_value<-list('',' ','nan','Nan','NaN','na')
+store<-read.csv(".\\store.csv", header = TRUE,na=na_value)
+train<-read.csv(".\\train.csv", header = TRUE)
+```
+
+
+```{r}
+head(train,10)
+```
+
+
+<table>
+<thead><tr><th scope=col>Store</th><th scope=col>DayOfWeek</th><th scope=col>Date</th><th scope=col>Sales</th><th scope=col>Customers</th><th scope=col>Open</th><th scope=col>Promo</th><th scope=col>StateHoliday</th><th scope=col>SchoolHoliday</th></tr></thead>
+<tbody>
+	<tr><td> 1        </td><td>5         </td><td>2015-07-31</td><td> 5263     </td><td> 555      </td><td>1         </td><td>1         </td><td>0         </td><td>1         </td></tr>
+	<tr><td> 2        </td><td>5         </td><td>2015-07-31</td><td> 6064     </td><td> 625      </td><td>1         </td><td>1         </td><td>0         </td><td>1         </td></tr>
+	<tr><td> 3        </td><td>5         </td><td>2015-07-31</td><td> 8314     </td><td> 821      </td><td>1         </td><td>1         </td><td>0         </td><td>1         </td></tr>
+	<tr><td> 4        </td><td>5         </td><td>2015-07-31</td><td>13995     </td><td>1498      </td><td>1         </td><td>1         </td><td>0         </td><td>1         </td></tr>
+	<tr><td> 5        </td><td>5         </td><td>2015-07-31</td><td> 4822     </td><td> 559      </td><td>1         </td><td>1         </td><td>0         </td><td>1         </td></tr>
+	<tr><td> 6        </td><td>5         </td><td>2015-07-31</td><td> 5651     </td><td> 589      </td><td>1         </td><td>1         </td><td>0         </td><td>1         </td></tr>
+	<tr><td> 7        </td><td>5         </td><td>2015-07-31</td><td>15344     </td><td>1414      </td><td>1         </td><td>1         </td><td>0         </td><td>1         </td></tr>
+	<tr><td> 8        </td><td>5         </td><td>2015-07-31</td><td> 8492     </td><td> 833      </td><td>1         </td><td>1         </td><td>0         </td><td>1         </td></tr>
+	<tr><td> 9        </td><td>5         </td><td>2015-07-31</td><td> 8565     </td><td> 687      </td><td>1         </td><td>1         </td><td>0         </td><td>1         </td></tr>
+	<tr><td>10        </td><td>5         </td><td>2015-07-31</td><td> 7185     </td><td> 681      </td><td>1         </td><td>1         </td><td>0         </td><td>1         </td></tr>
+</tbody>
+</table>
+
+
+
+
+```{r}
+head(store,10)
+```
+
+
+<table>
+<thead><tr><th scope=col>Store</th><th scope=col>StoreType</th><th scope=col>Assortment</th><th scope=col>CompetitionDistance</th><th scope=col>CompetitionOpenSinceMonth</th><th scope=col>CompetitionOpenSinceYear</th><th scope=col>Promo2</th><th scope=col>Promo2SinceWeek</th><th scope=col>Promo2SinceYear</th><th scope=col>PromoInterval</th></tr></thead>
+<tbody>
+	<tr><td> 1             </td><td>c              </td><td>a              </td><td> 1270          </td><td> 9             </td><td>2008           </td><td>0              </td><td>NA             </td><td>  NA           </td><td>NA             </td></tr>
+	<tr><td> 2             </td><td>a              </td><td>a              </td><td>  570          </td><td>11             </td><td>2007           </td><td>1              </td><td>13             </td><td>2010           </td><td>Jan,Apr,Jul,Oct</td></tr>
+	<tr><td> 3             </td><td>a              </td><td>a              </td><td>14130          </td><td>12             </td><td>2006           </td><td>1              </td><td>14             </td><td>2011           </td><td>Jan,Apr,Jul,Oct</td></tr>
+	<tr><td> 4             </td><td>c              </td><td>c              </td><td>  620          </td><td> 9             </td><td>2009           </td><td>0              </td><td>NA             </td><td>  NA           </td><td>NA             </td></tr>
+	<tr><td> 5             </td><td>a              </td><td>a              </td><td>29910          </td><td> 4             </td><td>2015           </td><td>0              </td><td>NA             </td><td>  NA           </td><td>NA             </td></tr>
+	<tr><td> 6             </td><td>a              </td><td>a              </td><td>  310          </td><td>12             </td><td>2013           </td><td>0              </td><td>NA             </td><td>  NA           </td><td>NA             </td></tr>
+	<tr><td> 7             </td><td>a              </td><td>c              </td><td>24000          </td><td> 4             </td><td>2013           </td><td>0              </td><td>NA             </td><td>  NA           </td><td>NA             </td></tr>
+	<tr><td> 8             </td><td>a              </td><td>a              </td><td> 7520          </td><td>10             </td><td>2014           </td><td>0              </td><td>NA             </td><td>  NA           </td><td>NA             </td></tr>
+	<tr><td> 9             </td><td>a              </td><td>c              </td><td> 2030          </td><td> 8             </td><td>2000           </td><td>0              </td><td>NA             </td><td>  NA           </td><td>NA             </td></tr>
+	<tr><td>10             </td><td>a              </td><td>a              </td><td> 3160          </td><td> 9             </td><td>2009           </td><td>0              </td><td>NA             </td><td>  NA           </td><td>NA             </td></tr>
+</tbody>
+</table>
+
+
+
+
+```{r}
+data<-merge(train,store)
+```
+
+
+```{r}
+head(data)
+```
+
+
+<table>
+<thead><tr><th scope=col>Store</th><th scope=col>DayOfWeek</th><th scope=col>Date</th><th scope=col>Sales</th><th scope=col>Customers</th><th scope=col>Open</th><th scope=col>Promo</th><th scope=col>StateHoliday</th><th scope=col>SchoolHoliday</th><th scope=col>StoreType</th><th scope=col>Assortment</th><th scope=col>CompetitionDistance</th><th scope=col>CompetitionOpenSinceMonth</th><th scope=col>CompetitionOpenSinceYear</th><th scope=col>Promo2</th><th scope=col>Promo2SinceWeek</th><th scope=col>Promo2SinceYear</th><th scope=col>PromoInterval</th></tr></thead>
+<tbody>
+	<tr><td>1         </td><td>5         </td><td>2015-07-31</td><td>5263      </td><td>555       </td><td>1         </td><td>1         </td><td>0         </td><td>1         </td><td>c         </td><td>a         </td><td>1270      </td><td>9         </td><td>2008      </td><td>0         </td><td>NA        </td><td>NA        </td><td>NA        </td></tr>
+	<tr><td>1         </td><td>6         </td><td>2013-01-12</td><td>4952      </td><td>646       </td><td>1         </td><td>0         </td><td>0         </td><td>0         </td><td>c         </td><td>a         </td><td>1270      </td><td>9         </td><td>2008      </td><td>0         </td><td>NA        </td><td>NA        </td><td>NA        </td></tr>
+	<tr><td>1         </td><td>5         </td><td>2014-01-03</td><td>4190      </td><td>552       </td><td>1         </td><td>0         </td><td>0         </td><td>1         </td><td>c         </td><td>a         </td><td>1270      </td><td>9         </td><td>2008      </td><td>0         </td><td>NA        </td><td>NA        </td><td>NA        </td></tr>
+	<tr><td>1         </td><td>3         </td><td>2014-12-03</td><td>6454      </td><td>695       </td><td>1         </td><td>1         </td><td>0         </td><td>0         </td><td>c         </td><td>a         </td><td>1270      </td><td>9         </td><td>2008      </td><td>0         </td><td>NA        </td><td>NA        </td><td>NA        </td></tr>
+	<tr><td>1         </td><td>3         </td><td>2013-11-13</td><td>3310      </td><td>464       </td><td>1         </td><td>0         </td><td>0         </td><td>0         </td><td>c         </td><td>a         </td><td>1270      </td><td>9         </td><td>2008      </td><td>0         </td><td>NA        </td><td>NA        </td><td>NA        </td></tr>
+	<tr><td>1         </td><td>7         </td><td>2013-10-27</td><td>   0      </td><td>  0       </td><td>0         </td><td>0         </td><td>0         </td><td>0         </td><td>c         </td><td>a         </td><td>1270      </td><td>9         </td><td>2008      </td><td>0         </td><td>NA        </td><td>NA        </td><td>NA        </td></tr>
+</tbody>
+</table>
+
+
+
+
+```{r}
+print("Shape of the Dataset:")
+dim(train)
+print("Shape of the Merged Dataset:")
+dim(data)
+```
+
+    [1] "Shape of the Dataset:"
+    
+
+
+<ol class=list-inline>
+	<li>1017209</li>
+	<li>9</li>
+</ol>
+
+
+
+    [1] "Shape of the Merged Dataset:"
+    
+
+
+<ol class=list-inline>
+	<li>1017209</li>
+	<li>18</li>
+</ol>
+
+
+
+
+```{r}
+library("plyr")
+count_store<-count(data, 'Store')
+print('Distinct number of Stores :')
+length(count_store$Store)
+```
+
+    Warning message:
+    "package 'plyr' was built under R version 3.6.3"------------------------------------------------------------------------------
+    You have loaded plyr after dplyr - this is likely to cause problems.
+    If you need functions from both plyr and dplyr, please load plyr first, then dplyr:
+    library(plyr); library(dplyr)
+    ------------------------------------------------------------------------------
+    
+    Attaching package: 'plyr'
+    
+    The following objects are masked from 'package:dplyr':
+    
+        arrange, count, desc, failwith, id, mutate, rename, summarise,
+        summarize
+    
+    
+
+    [1] "Distinct number of Stores :"
+    
+
+
+1115
+
+
+
+```{r}
+summary(data)
+```
+
+
+         Store          DayOfWeek             Date             Sales      
+     Min.   :   1.0   Min.   :1.000   2013-01-02:   1115   Min.   :    0  
+     1st Qu.: 280.0   1st Qu.:2.000   2013-01-03:   1115   1st Qu.: 3727  
+     Median : 558.0   Median :4.000   2013-01-04:   1115   Median : 5744  
+     Mean   : 558.4   Mean   :3.998   2013-01-05:   1115   Mean   : 5774  
+     3rd Qu.: 838.0   3rd Qu.:6.000   2013-01-06:   1115   3rd Qu.: 7856  
+     Max.   :1115.0   Max.   :7.000   2013-01-07:   1115   Max.   :41551  
+                                      (Other)   :1010519                  
+       Customers           Open            Promo        StateHoliday
+     Min.   :   0.0   Min.   :0.0000   Min.   :0.0000   0:986159    
+     1st Qu.: 405.0   1st Qu.:1.0000   1st Qu.:0.0000   a: 20260    
+     Median : 609.0   Median :1.0000   Median :0.0000   b:  6690    
+     Mean   : 633.1   Mean   :0.8301   Mean   :0.3815   c:  4100    
+     3rd Qu.: 837.0   3rd Qu.:1.0000   3rd Qu.:1.0000               
+     Max.   :7388.0   Max.   :1.0000   Max.   :1.0000               
+                                                                    
+     SchoolHoliday    StoreType  Assortment CompetitionDistance
+     Min.   :0.0000   a:551627   a:537445   Min.   :   20      
+     1st Qu.:0.0000   b: 15830   b:  8294   1st Qu.:  710      
+     Median :0.0000   c:136840   c:471470   Median : 2330      
+     Mean   :0.1786   d:312912              Mean   : 5430      
+     3rd Qu.:0.0000                         3rd Qu.: 6890      
+     Max.   :1.0000                         Max.   :75860      
+                                            NA's   :2642       
+     CompetitionOpenSinceMonth CompetitionOpenSinceYear     Promo2      
+     Min.   : 1.0              Min.   :1900             Min.   :0.0000  
+     1st Qu.: 4.0              1st Qu.:2006             1st Qu.:0.0000  
+     Median : 8.0              Median :2010             Median :1.0000  
+     Mean   : 7.2              Mean   :2009             Mean   :0.5006  
+     3rd Qu.:10.0              3rd Qu.:2013             3rd Qu.:1.0000  
+     Max.   :12.0              Max.   :2015             Max.   :1.0000  
+     NA's   :323348            NA's   :323348                           
+     Promo2SinceWeek  Promo2SinceYear           PromoInterval   
+     Min.   : 1.0     Min.   :2009     Feb,May,Aug,Nov :118596  
+     1st Qu.:13.0     1st Qu.:2011     Jan,Apr,Jul,Oct :293122  
+     Median :22.0     Median :2012     Mar,Jun,Sept,Dec: 97460  
+     Mean   :23.3     Mean   :2012     NA's            :508031  
+     3rd Qu.:37.0     3rd Qu.:2013                              
+     Max.   :50.0     Max.   :2015                              
+     NA's   :508031   NA's   :508031                            
+
+
+
+```{r}
+str(data,stringsAsFactors = FALSE)
+```
+
+    'data.frame':	1017209 obs. of  18 variables:
+     $ Store                    : int  1 1 1 1 1 1 1 1 1 1 ...
+     $ DayOfWeek                : int  5 6 5 3 3 7 3 1 5 1 ...
+     $ Date                     : Factor w/ 942 levels "2013-01-01","2013-01-02",..: 942 12 368 702 317 300 891 266 249 840 ...
+     $ Sales                    : int  5263 4952 4190 6454 3310 0 3591 4770 3836 3722 ...
+     $ Customers                : int  555 646 552 695 464 0 453 542 466 480 ...
+     $ Open                     : int  1 1 1 1 1 0 1 1 1 1 ...
+     $ Promo                    : int  1 0 0 1 0 0 0 1 0 0 ...
+     $ StateHoliday             : Factor w/ 4 levels "0","a","b","c": 1 1 1 1 1 1 1 1 1 1 ...
+     $ SchoolHoliday            : int  1 0 1 0 0 0 0 0 0 0 ...
+     $ StoreType                : Factor w/ 4 levels "a","b","c","d": 3 3 3 3 3 3 3 3 3 3 ...
+     $ Assortment               : Factor w/ 3 levels "a","b","c": 1 1 1 1 1 1 1 1 1 1 ...
+     $ CompetitionDistance      : int  1270 1270 1270 1270 1270 1270 1270 1270 1270 1270 ...
+     $ CompetitionOpenSinceMonth: int  9 9 9 9 9 9 9 9 9 9 ...
+     $ CompetitionOpenSinceYear : int  2008 2008 2008 2008 2008 2008 2008 2008 2008 2008 ...
+     $ Promo2                   : int  0 0 0 0 0 0 0 0 0 0 ...
+     $ Promo2SinceWeek          : int  NA NA NA NA NA NA NA NA NA NA ...
+     $ Promo2SinceYear          : int  NA NA NA NA NA NA NA NA NA NA ...
+     $ PromoInterval            : Factor w/ 3 levels "Feb,May,Aug,Nov",..: NA NA NA NA NA NA NA NA NA NA ...
+    
+
+
+```{r}
+count_holiday<-count(data['StateHoliday'])
+count_holiday
+```
+
+
+<table>
+<thead><tr><th scope=col>StateHoliday</th><th scope=col>freq</th></tr></thead>
+<tbody>
+	<tr><td>0     </td><td>986159</td></tr>
+	<tr><td>a     </td><td> 20260</td></tr>
+	<tr><td>b     </td><td>  6690</td></tr>
+	<tr><td>c     </td><td>  4100</td></tr>
+</tbody>
+</table>
+
+
+
+## Transforming date column
+
+
+```{r}
+data['months']<- months(as.Date(data$Date))
+```
+
+
+```{r}
+data['months']<- match(data$months,month.name)
+
+```
+
+
+```{r}
+data['Day']<-weekdays(as.Date(data$Date))
+```
+
+
+```{r}
+
+
+
+data$Day <- recode(data$Day, 
+       "Sunday"=0,
+       "Monday"=1,
+       "Tuesday"=2,
+       "Wednesday"=3,
+       "Thursday"=4,
+       "Friday"=5,
+       "Saturday"=6)
+```
+
+
+```{r}
+data['Quarter']<-quarters(as.Date(data$Date))
+data$Quarter <- recode(data$Quarter,
+                   "Q1"=1,
+                   "Q2"=2,
+                   "Q3"=3,
+                      "Q4"=4)
+```
+
+
+```{r}
+getSeason <- function(DATES) {
+    WS <- as.Date("2012-12-15", format = "%Y-%m-%d") # Winter Solstice
+    SE <- as.Date("2012-3-15",  format = "%Y-%m-%d") # Spring Equinox
+    SS <- as.Date("2012-6-15",  format = "%Y-%m-%d") # Summer Solstice
+    FE <- as.Date("2012-9-15",  format = "%Y-%m-%d") # Fall Equinox
+
+    # Convert dates from any year to 2012 dates
+    d <- as.Date(strftime(DATES, format="2012-%m-%d"))
+
+    ifelse (d >= WS | d < SE, "Winter",
+      ifelse (d >= SE & d < SS, "Spring",
+        ifelse (d >= SS & d < FE, "Summer", "Fall")))
+}
+
+data['Season']<-getSeason(data$Date)
+```
+
+
+```{r}
+hist(data$Sales,xlab="Sales",ylab="Frequency",main="Histogram for Store Sales",col=c("darkblue"))
+```
+
+
+![png](notebook_files/notebook_20_0.png)
+
+
+The histogram helps us understand the distribution of the data at a high level. From the plot, we can see that the data range is from 0 to 40,000, but there is barely any data after 20,000. This indicates that most of the stores have sales in the range 0–20,000, and just a few stores have sales greater than 20,000. It might be worthwhile to remove these outliers, as it helps the model learn better.
+
+
+```{r}
+
+d <- melt(data)
+ggplot(d,aes(x = value)) + 
+    facet_wrap(~variable,scales = "free_x") + 
+    geom_histogram()
+```
+
+    Warning message:
+    "package 'reshape2' was built under R version 3.6.3"
+    Attaching package: 'reshape2'
+    
+    The following object is masked from 'package:tidyr':
+    
+        smiths
+    
+    Using Date, StateHoliday, StoreType, Assortment, PromoInterval, Seaason, Season as id variables
+    `stat_bin()` using `bins = 30`. Pick better value with `binwidth`.
+    Warning message:
+    "Removed 1665400 rows containing non-finite values (stat_bin)."
+
+
+![png](notebook_files/notebook_22_1.png)
+
+
+We can see that the features Promo, Promo2, School Holiday, and Open are actually binary categorical features: they represent two possible values similar to gender: Male or Female. Therefore, these are actually categorical features but already encoded as numeric columns. This is great; we won’t need to further process them, as machine learning models understand only numeric values. Promo2 is well distributed between the two distinct values, whereas Promo has more records for ‘1’ and Open has most of the store records as ‘1’. The distribution between the values for ‘Open’ makes sense, as the stores will be open for most days except state holidays. Customer numbers range from 0 to 2,000 for most stores. A few stores have as many as 7000 daily customers, but these are outliers and we might need to fix them before modeling.The next set of numeric variables are Promo2SinceWeek and Promo2SinceYear; these show a relatively well-distributed feature.
+
+
+```{r}
+ggplot(aes(x = Season, y = Sales, fill = Season), data = data) + stat_summary(fun.y = "mean", geom = "bar")+
+    theme_classic() +
+    labs(
+        x = "Season",
+        y = "Average Sales",
+        title = paste(
+            "Bar plots of Average Sales by Season"
+        )
+    )
+```
+
+    Warning message:
+    "`fun.y` is deprecated. Use `fun` instead."
+
+
+![png](notebook_files/notebook_24_1.png)
+
+
+Sales across seasons barely seem to differ
+
+
+```{r}
+ggplot(aes(x = Assortment, y = Sales, fill = Assortment), data = data) + stat_summary(fun.y = "mean", geom = "bar")+
+    theme_classic() +
+    labs(
+        x = "Assortment",
+        y = "Average Sales",
+        title = paste(
+            "Bar plots of Sales by Assortment"
+        )
+    )
+```
+
+    Warning message:
+    "`fun.y` is deprecated. Use `fun` instead."
+
+
+![png](notebook_files/notebook_26_1.png)
+
+
+There seems to be an increasing trend for sales across
+assortments. Stores with assortment “b” generally have the highest sales. However, further investigation is required to cheeck for skewness of the data.
+
+
+```{r}
+ggplot(aes(x = StoreType, y = Sales, fill = StoreType), data = data) + stat_summary(fun.y = "mean", geom = "bar")+
+    theme_classic() +
+    labs(
+        x = "StoreType",
+        y = "Average Sales",
+        title = paste(
+            "Bar plots of StoreType by Assortment"
+        )
+    )
+```
+
+    Warning message:
+    "`fun.y` is deprecated. Use `fun` instead."
+
+
+![png](notebook_files/notebook_28_1.png)
+
+
+Store type also shows a unique relationship with sales across store types. We can see fairly higher sales for “b” store types also.
+
+
+
+```{r}
+ggplot(aes(x = Season, y = Sales, fill = Season), data = data) + 
+    geom_bar(stat = "identity") +
+    theme_classic() +
+    labs(
+        x = "Season",
+        y = "Count of Sales",
+        title = paste(
+            "Bar plots of Count of Sales by Season"
+        )
+    )
+```
+
+
+![png](notebook_files/notebook_30_0.png)
+
+
+
+```{r}
+ggplot(aes(x = Assortment, y = Sales, fill = Assortment), data = data) + 
+    geom_bar(stat = "identity") +
+    theme_classic() +
+    labs(
+        x = "StoreType",
+        y = "Count of Sales",
+        title = paste(
+            "Bar plots of Count of Sales by StoreType"
+        )
+    )
+```
+
+
+![png](notebook_files/notebook_31_0.png)
+
+
+We can notice that the distribution of data points across different classes within a category is skewed. A simple check on StoreType and Assortment reveals that b has a significantly lower number of stores or data points in the dataset. Therefore, our initial understanding of the relationships observed is not true.
+
+
+```{r}
+ggplot(aes(x = StateHoliday, y = Sales, fill = StateHoliday), data = data) + stat_summary(fun.y = "mean", geom = "bar")+
+    theme_classic() +
+    labs(
+        x = "StateHoliday",
+        y = "Average Sales",
+        title = paste(
+            "Bar plots of Average Sales by StateHoliday"
+        )
+    )
+```
+
+    Warning message:
+    "`fun.y` is deprecated. Use `fun` instead."
+
+
+![png](notebook_files/notebook_33_1.png)
+
+
+
+```{r}
+
+ggplot(aes(x = Promo, y = Sales, fill = Promo), data = data) + stat_summary(fun.y = "mean", geom = "bar")+
+    theme_classic() +
+    labs(
+        x = "Promo",
+        y = "Average Sales",
+        title = paste(
+            "Bar plots of Average Sales by Promo"
+        )
+    )
+```
+
+    Warning message:
+    "`fun.y` is deprecated. Use `fun` instead."
+
+
+![png](notebook_files/notebook_34_1.png)
+
+
+
+```{r}
+# Handling missing data
+(sapply(data, function(x) sum(is.na (x))))*100/dim(data)[1]
+```
+
+
+<dl class=dl-horizontal>
+	<dt>Store</dt>
+		<dd>0</dd>
+	<dt>DayOfWeek</dt>
+		<dd>0</dd>
+	<dt>Date</dt>
+		<dd>0</dd>
+	<dt>Sales</dt>
+		<dd>0</dd>
+	<dt>Customers</dt>
+		<dd>0</dd>
+	<dt>Open</dt>
+		<dd>0</dd>
+	<dt>Promo</dt>
+		<dd>0</dd>
+	<dt>StateHoliday</dt>
+		<dd>0</dd>
+	<dt>SchoolHoliday</dt>
+		<dd>0</dd>
+	<dt>StoreType</dt>
+		<dd>0</dd>
+	<dt>Assortment</dt>
+		<dd>0</dd>
+	<dt>CompetitionDistance</dt>
+		<dd>0.25973030124586</dd>
+	<dt>CompetitionOpenSinceMonth</dt>
+		<dd>31.7877643630758</dd>
+	<dt>CompetitionOpenSinceYear</dt>
+		<dd>31.7877643630758</dd>
+	<dt>Promo2</dt>
+		<dd>0</dd>
+	<dt>Promo2SinceWeek</dt>
+		<dd>49.9436202393019</dd>
+	<dt>Promo2SinceYear</dt>
+		<dd>49.9436202393019</dd>
+	<dt>PromoInterval</dt>
+		<dd>49.9436202393019</dd>
+	<dt>months</dt>
+		<dd>0</dd>
+	<dt>Day</dt>
+		<dd>0</dd>
+	<dt>Quarter</dt>
+		<dd>0</dd>
+	<dt>Season</dt>
+		<dd>0</dd>
+</dl>
+
+
+
+We drop features with gretaer than 30 percent missing data and other non informative features
+
+
+```{r}
+data$Store<- NULL
+data$CompetitionOpenSinceMonth<- NULL
+data$CompetitionOpenSinceYear<- NULL
+data$Promo2SinceWeek  <- NULL
+data$Promo2SinceYear <- NULL
+data$PromoInterval <- NULL
+
+data$Date <- NULL
+```
+
+
+```{r}
+i<-'CompetitionDistance'
+data[is.na(data[,i]), i] <- mean(data[,i], na.rm = TRUE)
+
+
+```
+
+
+```{r}
+#Drop columns
+data_new<-data[!sapply(data, function(x) any(is.na(x)))]
+
+```
+
+
+```{r}
+str(data_new)
+```
+
+    'data.frame':	1017209 obs. of  15 variables:
+     $ DayOfWeek          : int  5 6 5 3 3 7 3 1 5 1 ...
+     $ Sales              : int  5263 4952 4190 6454 3310 0 3591 4770 3836 3722 ...
+     $ Customers          : int  555 646 552 695 464 0 453 542 466 480 ...
+     $ Open               : int  1 1 1 1 1 0 1 1 1 1 ...
+     $ Promo              : int  1 0 0 1 0 0 0 1 0 0 ...
+     $ StateHoliday       : Factor w/ 4 levels "0","a","b","c": 1 1 1 1 1 1 1 1 1 1 ...
+     $ SchoolHoliday      : int  1 0 1 0 0 0 0 0 0 0 ...
+     $ StoreType          : Factor w/ 4 levels "a","b","c","d": 3 3 3 3 3 3 3 3 3 3 ...
+     $ Assortment         : Factor w/ 3 levels "a","b","c": 1 1 1 1 1 1 1 1 1 1 ...
+     $ CompetitionDistance: num  1270 1270 1270 1270 1270 1270 1270 1270 1270 1270 ...
+     $ Promo2             : int  0 0 0 0 0 0 0 0 0 0 ...
+     $ months             : int  7 1 1 12 11 10 6 9 9 4 ...
+     $ Day                : num  5 6 5 3 3 0 3 1 5 1 ...
+     $ Quarter            : num  3 1 1 4 4 4 2 3 3 2 ...
+     $ Season             : chr  "Summer" "Winter" "Winter" "Fall" ...
+    
+
+
+```{r}
+
+```
+
+stateholiday should have 0 or 1, to indicate if there is holiday or not
+
+
+```{r}
+data_new$StateHoliday <- recode(data_new$StateHoliday, 
+         "0"=0,                   
+        "a"=1,
+        "b"=1,
+        "c"=1)
+
+```
+
+
+```{r}
+data_new$Season<- recode(data_new$Season, 
+         "Summer"=0,                   
+        "Winter"=1,
+        "Fall"=2,
+        "Spring"=3,
+        )
+```
+
+
+```{r}
+data_new$Assortment   <- recode(data_new$ Assortment  , 
+         "a"=0,                   
+        "b"=1,
+        "c"=2)
+```
+
+
+```{r}
+str(data_new)
+```
+
+    'data.frame':	1017209 obs. of  15 variables:
+     $ DayOfWeek          : int  5 6 5 3 3 7 3 1 5 1 ...
+     $ Sales              : int  5263 4952 4190 6454 3310 0 3591 4770 3836 3722 ...
+     $ Customers          : int  555 646 552 695 464 0 453 542 466 480 ...
+     $ Open               : int  1 1 1 1 1 0 1 1 1 1 ...
+     $ Promo              : int  1 0 0 1 0 0 0 1 0 0 ...
+     $ StateHoliday       : num  0 0 0 0 0 0 0 0 0 0 ...
+     $ SchoolHoliday      : int  1 0 1 0 0 0 0 0 0 0 ...
+     $ StoreType          : Factor w/ 4 levels "a","b","c","d": 3 3 3 3 3 3 3 3 3 3 ...
+     $ Assortment         : num  0 0 0 0 0 0 0 0 0 0 ...
+     $ CompetitionDistance: num  1270 1270 1270 1270 1270 1270 1270 1270 1270 1270 ...
+     $ Promo2             : int  0 0 0 0 0 0 0 0 0 0 ...
+     $ months             : int  7 1 1 12 11 10 6 9 9 4 ...
+     $ Day                : num  5 6 5 3 3 0 3 1 5 1 ...
+     $ Quarter            : num  3 1 1 4 4 4 2 3 3 2 ...
+     $ Season             : num  0 1 1 2 2 2 3 2 0 3 ...
+    
+
+
+```{r}
+data_new$StoreType<- as.numeric(data_new$StoreType)
+
+
+```
+
+
+```{r}
+#One hot encoding
+dmy <- dummyVars(" ~ .", data = data_new)
+data_ohe <- data.frame(predict(dmy, newdata = data_new))
+
+```
+
+## Implementing algorithms for prediction
+
+The algorithm considered for this task are <b>GBM</b> and <b>XGBOOST</b>
+<p>Since this is a regression task, the metric used is MSE </p>
+<p>GBM and XGBOOST algorithms perfroms cross validation in the process of fitting the data, so it is not necessary to manually perform a cross validation</p>
+
+
+```{r}
+set.seed(101) # for reproducibility
+train=sample(1:nrow(data_ohe), 712046) # 70:30 split
+
+```
+
+
+```{r}
+train_data=data_ohe[train,]
+test=data_ohe[-train]
+```
+
+
+```{r}
+#Implementing GBM
+
+set.seed(123) # for reproducibility
+
+# train GBM model
+gbm.fit <- gbm(
+  formula = Sales ~ .,
+  distribution = "gaussian",
+  data = data_ohe[train,],
+  n.trees = 1000,
+  interaction.depth = 1,
+  shrinkage = 0.001,
+  cv.folds = 5,
+  n.cores = NULL, # will use all cores by default
+  verbose = FALSE
+  )  
+
+# print results
+print(gbm.fit)
+```
+
+    gbm(formula = Sales ~ ., distribution = "gaussian", data = data_ohe[train, 
+        ], n.trees = 1000, interaction.depth = 1, shrinkage = 0.001, 
+        cv.folds = 5, verbose = FALSE, n.cores = NULL)
+    A gradient boosted model with gaussian loss function.
+    1000 iterations were performed.
+    The best cross-validation iteration was 1000.
+    There were 17 predictors of which 1 had non-zero influence.
+    
+
+
+```{r}
+# get MSE and compute RMSE
+sqrt(min(gbm.fit$cv.error))
+
+
+
+```
+
+
+2635.59183536881
+
+
+This will be our baseline MSE, for any other model to be acceptable, it must perform better
+
+
+```{r}
+# plot loss function as a result of n trees added to the ensemble
+gbm.perf(gbm.fit, method = "cv")
+```
+
+
+1000
+
+
+
+![png](notebook_files/notebook_56_1.png)
+
+
+
+```{r}
+#XGBOOST accepts data in form of a sparse matrix
+# preparing the sparse matrix for XGBOOST
+drops <- c('Sales')
+x<-train_data[ , !(names(train_data) %in% drops)]
+dtrain <- xgb.DMatrix(label = train_data[,'Sales'], data = as.matrix(x))
+```
+
+
+```{r}
+# reproducibility
+set.seed(123)
+
+xgb.fit1 <- xgb.cv(
+  data=dtrain,
+  nrounds = 1000,
+  nfold = 5,
+  objective = "reg:linear",  # for regression models
+  verbose = 0               # silent,
+)
+```
+
+    [09:27:14] WARNING: amalgamation/../src/objective/regression_obj.cu:170: reg:linear is now deprecated in favor of reg:squarederror.
+    [09:27:15] WARNING: amalgamation/../src/objective/regression_obj.cu:170: reg:linear is now deprecated in favor of reg:squarederror.
+    [09:27:15] WARNING: amalgamation/../src/objective/regression_obj.cu:170: reg:linear is now deprecated in favor of reg:squarederror.
+    [09:27:16] WARNING: amalgamation/../src/objective/regression_obj.cu:170: reg:linear is now deprecated in favor of reg:squarederror.
+    [09:27:16] WARNING: amalgamation/../src/objective/regression_obj.cu:170: reg:linear is now deprecated in favor of reg:squarederror.
+    
+
+
+```{r}
+# get number of trees that minimize error
+xgb.fit1$evaluation_log %>%
+  dplyr::summarise(
+    ntrees.train = which(train_rmse_mean == min(train_rmse_mean))[1],
+    rmse.train   = min(train_rmse_mean),
+    ntrees.test  = which(test_rmse_mean == min(test_rmse_mean))[1],
+    rmse.test   = min(test_rmse_mean),
+  )
+
+
+# plot error vs number trees
+ggplot(xgb.fit1$evaluation_log) +
+  geom_line(aes(iter, train_rmse_mean), color = "red") +
+  geom_line(aes(iter, test_rmse_mean), color = "blue")
+```
+
+
+<table>
+<thead><tr><th scope=col>ntrees.train</th><th scope=col>rmse.train</th><th scope=col>ntrees.test</th><th scope=col>rmse.test</th></tr></thead>
+<tbody>
+	<tr><td>1000    </td><td>392.1606</td><td>1000    </td><td>457.5747</td></tr>
+</tbody>
+</table>
+
+
+
+
+![png](notebook_files/notebook_59_1.png)
+
+
+This model performs better, let's proceed 
+
+
+```{r}
+# reproducibility
+set.seed(123)
+
+xgb.fit2 <- xgb.cv(
+  data=dtrain,
+  nrounds = 2000,
+  nfold = 5,
+  objective = "reg:squarederror",  # for regression models
+  verbose = 0,               # silent,
+  early_stopping_rounds = 10 # stop if no improvement for 10 consecutive trees
+)
+
+
+# get number of trees that minimize error
+xgb.fit2$evaluation_log %>%
+  dplyr::summarise(
+    ntrees.train = which(train_rmse_mean == min(train_rmse_mean))[1],
+    rmse.train   = min(train_rmse_mean),
+    ntrees.test  = which(test_rmse_mean == min(test_rmse_mean))[1],
+    rmse.test   = min(test_rmse_mean),
+  )
+# plot error vs number trees
+ggplot(xgb.fit2$evaluation_log) +
+  geom_line(aes(iter, train_rmse_mean), color = "red") +
+  geom_line(aes(iter, test_rmse_mean), color = "blue")
+```
+
+
+<table>
+<thead><tr><th scope=col>ntrees.train</th><th scope=col>rmse.train</th><th scope=col>ntrees.test</th><th scope=col>rmse.test</th></tr></thead>
+<tbody>
+	<tr><td>1111    </td><td>387.4156</td><td>1101    </td><td>456.4174</td></tr>
+</tbody>
+</table>
+
+
+
+
+![png](notebook_files/notebook_61_1.png)
+
+
+
+```{r}
+# create parameter list
+  params <- list(
+    eta = .1,
+    max_depth = 5,
+    min_child_weight = 2,
+    subsample = .8,
+    colsample_bytree = .9
+  )
+
+# reproducibility
+set.seed(123)
+
+# train model
+xgb.fit3 <- xgb.cv(
+  params = params,
+  data=dtrain,
+  nrounds = 1000,
+  nfold = 5,
+  objective = "reg:linear",  # for regression models
+  verbose = 0,               # silent,
+  early_stopping_rounds = 10 # stop if no improvement for 10 consecutive trees
+)
+
+# assess results
+xgb.fit3$evaluation_log %>%
+  dplyr::summarise(
+    ntrees.train = which(train_rmse_mean == min(train_rmse_mean))[1],
+    rmse.train   = min(train_rmse_mean),
+    ntrees.test  = which(test_rmse_mean == min(test_rmse_mean))[1],
+    rmse.test   = min(test_rmse_mean),
+  )
+```
+
+    [19:27:57] WARNING: amalgamation/../src/objective/regression_obj.cu:170: reg:linear is now deprecated in favor of reg:squarederror.
+    [19:27:58] WARNING: amalgamation/../src/objective/regression_obj.cu:170: reg:linear is now deprecated in favor of reg:squarederror.
+    [19:27:58] WARNING: amalgamation/../src/objective/regression_obj.cu:170: reg:linear is now deprecated in favor of reg:squarederror.
+    [19:27:58] WARNING: amalgamation/../src/objective/regression_obj.cu:170: reg:linear is now deprecated in favor of reg:squarederror.
+    [19:27:58] WARNING: amalgamation/../src/objective/regression_obj.cu:170: reg:linear is now deprecated in favor of reg:squarederror.
+    
+
+
+<table>
+<thead><tr><th scope=col>ntrees.train</th><th scope=col>rmse.train</th><th scope=col>ntrees.test</th><th scope=col>rmse.test</th></tr></thead>
+<tbody>
+	<tr><td>1000    </td><td>541.3714</td><td>1000    </td><td>556.4568</td></tr>
+</tbody>
+</table>
+
+
+
+This model dosen't outperform our first model
+
+
+```{r}
+# create hyperparameter grid
+hyper_grid <- expand.grid(
+  eta = c(.01, .05, .1, .3),
+  max_depth = c(1, 3, 5,6, 7),
+  min_child_weight = c(1, 3, 5, 7),
+  subsample = c(.65, .8, 1), 
+  colsample_bytree = c(.8, .9, 1),
+  optimal_trees = 0,               # a place to dump results
+  min_RMSE = 0                     # a place to dump results
+)
+```
+
+
+```{r}
+# grid search 
+for(i in 1:nrow(hyper_grid)) {
+  
+  # create parameter list
+  params <- list(
+    eta = hyper_grid$eta[i],
+    max_depth = hyper_grid$max_depth[i],
+    min_child_weight = hyper_grid$min_child_weight[i],
+    subsample = hyper_grid$subsample[i],
+    colsample_bytree = hyper_grid$colsample_bytree[i]
+  )
+  
+  # reproducibility
+  set.seed(123)
+  
+  # train model
+  xgb.tune <- xgb.cv(
+    params = params,
+    data=dtrain,
+    nrounds = 5000,
+    nfold = 5,
+    objective = "reg:linear",  # for regression models
+    verbose = 0,               # silent,
+    early_stopping_rounds = 10 # stop if no improvement for 10 consecutive trees
+  )
+  
+  # add min training error and trees to grid
+  hyper_grid$optimal_trees[i] <- which.min(xgb.tune$evaluation_log$test_rmse_mean)
+  hyper_grid$min_RMSE[i] <- min(xgb.tune$evaluation_log$test_rmse_mean)
+}
+
+hyper_grid %>%
+  dplyr::arrange(min_RMSE) %>%
+  head(10)
+```
+
+
+```{r}
+# parameter list
+params <- list(
+  eta = 0.3,
+  max_depth = 1,
+  min_child_weight = 1,
+  subsample = 1,
+  colsample_bytree = 1
+)
+
+# train final model
+xgb.fit.final <- xgb.cv(
+  params = params,
+    data=dtrain,
+  nrounds = 1000,
+  objective = "reg:linear",
+  verbose = 0,
+    nfold=5
+)
+
+```
+
+    [10:37:02] WARNING: amalgamation/../src/objective/regression_obj.cu:170: reg:linear is now deprecated in favor of reg:squarederror.
+    [10:37:02] WARNING: amalgamation/../src/objective/regression_obj.cu:170: reg:linear is now deprecated in favor of reg:squarederror.
+    [10:37:02] WARNING: amalgamation/../src/objective/regression_obj.cu:170: reg:linear is now deprecated in favor of reg:squarederror.
+    [10:37:03] WARNING: amalgamation/../src/objective/regression_obj.cu:170: reg:linear is now deprecated in favor of reg:squarederror.
+    [10:37:03] WARNING: amalgamation/../src/objective/regression_obj.cu:170: reg:linear is now deprecated in favor of reg:squarederror.
+    
+
+
+```{r}
+# get number of trees that minimize error
+xgb.fit.final$evaluation_log %>%
+  dplyr::summarise(
+    ntrees.train = which(train_rmse_mean == min(train_rmse_mean))[1],
+    rmse.train   = min(train_rmse_mean),
+    ntrees.test  = which(test_rmse_mean == min(test_rmse_mean))[1],
+    rmse.test   = min(test_rmse_mean),
+  )
+
+
+# plot error vs number trees
+ggplot(xgb.fit.final$evaluation_log) +
+  geom_line(aes(iter, train_rmse_mean), color = "red") +
+  geom_line(aes(iter, test_rmse_mean), color = "blue")
+```
+
+
+<table>
+<thead><tr><th scope=col>ntrees.train</th><th scope=col>rmse.train</th><th scope=col>ntrees.test</th><th scope=col>rmse.test</th></tr></thead>
+<tbody>
+	<tr><td>1000    </td><td>1134.168</td><td>1000    </td><td>1136.166</td></tr>
+</tbody>
+</table>
+
+
+
+
+![png](notebook_files/notebook_67_1.png)
+
+
+
+```{r}
+
+params <- list(
+  eta = 0.3,
+  max_depth = 1,
+  min_child_weight = 1,
+  subsample = 1,
+  colsample_bytree = 1
+)
+
+# train final model
+xgb.fit.final <- xgboost(
+  params = params,
+    data=dtrain,
+  nrounds = 1000,
+  objective = "reg:linear",
+  verbose = 0,
+    nfold=5
+)
+
+```
+
+    [10:53:22] WARNING: amalgamation/../src/objective/regression_obj.cu:170: reg:linear is now deprecated in favor of reg:squarederror.
+    [10:53:22] WARNING: amalgamation/../src/learner.cc:541: 
+    Parameters: { nfold } might not be used.
+    
+      This may not be accurate due to some parameters are only used in language bindings but
+      passed down to XGBoost core.  Or some parameters are not used but slip through this
+      verification. Please open an issue if you find above cases.
+    
+    
+    
+
+
+```{r}
+#plotting feature importance 
+importance_matrix <- xgb.importance(model = xgb.fit.final)
+
+# variable importance plot
+xgb.plot.importance(importance_matrix, top_n = 10, measure = "Gain")
+```
+
+
+![png](notebook_files/notebook_69_0.png)
+
+
+## The best model has an MSE of 456.4174
